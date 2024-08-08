@@ -11,7 +11,7 @@ Different strategies have been used:
 ---
 To run the project with docker:
 - ```docker build -t cdmo .``` to build the docker image.
-- ```docker run -t cdmo``` to run the docker image.
+- ```docker run -it cdmo``` to run the docker image.
 
 Then on the bash terminal it is possible to run the script with the command:
 - ```python3 gui_solvers.py``` to run a command line interface and choose the solver and the instance to solve.
