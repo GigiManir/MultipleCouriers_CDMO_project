@@ -4,6 +4,7 @@ from MIP.mip_model import solve_MIP_with_timeout
 from SAT.SAT import solve_SAT_with_timeout
 from SMT.smt import solve_SMT_with_timeout
 from CSP.run_csp import solve_instance_csp
+import json
 
 def read_dat_file(file_path):
     with open(file_path, 'r') as file:
@@ -25,6 +26,7 @@ def read_dat_file(file_path):
     return m, n, l, s, D
 
 def save_result(filename, result):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, 'w') as file:
             file.write(str(result))
 
@@ -51,9 +53,10 @@ def main():
             elif args.approach == 'CSP': res = solve_instance_csp(instance_id)
 
             complete_solution[approach][instance_id] = res
-            print(res)
-            # save_result(f'results/{approach}/{instance_id}_result.json', res)
-            print()
+            # print(res)
+            res = json.dumps(res, indent=4)
+            save_result(f'results/{approach}/{instance_id}_result.json', res)
+            # print()
 
 if __name__ == '__main__':
     main()
