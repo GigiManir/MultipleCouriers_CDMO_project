@@ -177,7 +177,7 @@ def solve_courier_problem(m, n, limits, sizes, dist_matrix, solver=None, timeout
     return solution_data
 
 # Solve the problem with a timeout
-def solve_SAT_with_timeout(m, n, limits, sizes, dist_matrix, solver_type=None, timeout: int = 302):
+def solve_SMT_with_timeout(m, n, limits, sizes, dist_matrix, solver_type=None, timeout: int = 302):
     manager = multiprocessing.Manager()
     results = manager.list()
     process = multiprocessing.Process(target=optimize_courier_routes, args=(results, m, n, dist_matrix, limits, sizes))
@@ -228,7 +228,7 @@ def read_instance_from_file(filename):
 if __name__ == '__main__':
       filename = f'inst07.dat'
       m, n, l, s, D = read_instance_from_file(filename)
-      result = solve_SAT_with_timeout(m, n, l, s, D)
+      result = solve_SMT_with_timeout(m, n, l, s, D)
       print("Tempo di esecuzione:", result['time'])
       print("Obiettivo:", result['objective'])
       print("Ottimale:", result['optimal'])
@@ -248,7 +248,7 @@ if __name__ == '__main__':
       m, n, l, s, D = read_instance_from_file(filename)
 
       # Risolvi l'istanza usando il solver SMT
-      result = solve_SAT_with_timeout(m, n, l, s, D)
+      result = solve_SMT_with_timeout(m, n, l, s, D)
 
       # Stampa i risultati
       print("Tempo di esecuzione:", result['time'])

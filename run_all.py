@@ -1,9 +1,9 @@
 import os
 import argparse
 from MIP.mip_model import solve_MIP_with_timeout
-# from SAT.sat_model import solve_SAT_with_timeout
-# from SMT.smt_model import solve_SMT_with_timeout
-# from CSP.csp_model import solve_CSP_with_timeout
+from SAT.SAT import solve_SAT_with_timeout
+from SMT.smt import solve_SMT_with_timeout
+from CSP.run_csp import solve_instance_csp
 
 def read_dat_file(file_path):
     with open(file_path, 'r') as file:
@@ -38,7 +38,7 @@ def main():
     approach = args.approach
     complete_solution[approach] = dict()
 
-    instances_folder = 'instances'
+    instances_folder = 'instances_copy'
     for filename in os.listdir(instances_folder):
         if filename.endswith('.dat'):
             instance_id = os.path.splitext(filename)[0]
@@ -46,13 +46,13 @@ def main():
             m, n, l, s, D = read_dat_file(instance_path)
             
             if args.approach == 'MIP': res = solve_MIP_with_timeout(m, n, l, s, D)
-            # elif args.approach == 'SAT': res = solve_SAT_with_timeout(m, n, l, s, D)
-            # elif args.approach == 'SMT': res = solve_SMT_with_timeout(m, n, l, s, D)
-            # elif args.approach == 'CSP': res = solve_CSP_with_timeout(m, n, l, s, D)
+            elif args.approach == 'SAT': res = solve_SAT_with_timeout(m, n, l, s, D)
+            elif args.approach == 'SMT': res = solve_SMT_with_timeout(m, n, l, s, D)
+            elif args.approach == 'CSP': res = solve_instance_csp(instance_id)
 
             complete_solution[approach][instance_id] = res
             print(res)
-            # save_result(f'results/{filename}_result.txt', res)
+            # save_result(f'results/{approach}/{instance_id}_result.json', res)
             print()
 
 if __name__ == '__main__':

@@ -22,8 +22,8 @@ def extract_info_from_output(output_str):
 
 
 def solve_instance_csp(instance_name, solver="gecode", timeout=300, queue=None):
-    model_path = os.path.abspath(f"CSP/model.mzn")
-    instance_path = os.path.abspath(f"CSP/{instance_name}.dzn")
+    model_path = os.path.abspath(f"CSP/model_better_.mzn")
+    instance_path = os.path.abspath(f"CSP/instances/{instance_name}.dzn")
     command = [
         'minizinc',
         f'--solver', f'{solver}',
@@ -36,11 +36,9 @@ def solve_instance_csp(instance_name, solver="gecode", timeout=300, queue=None):
         print(f'File {command[3]} does not exist')
     if not os.path.exists(command[4]):
         print(f'File {command[4]} does not exist')
-
     try:
         # Run the command and capture the output
         result = subprocess.run(command, capture_output=True, text=True, timeout=302)
-
         if result.returncode != 0:
             return {
                 'time': 0,
@@ -48,7 +46,6 @@ def solve_instance_csp(instance_name, solver="gecode", timeout=300, queue=None):
                 'obj': 'N/A',
                 'sol': []
             }
-
         # Print the standard output and standard error
         output = result.stdout
     except subprocess.TimeoutExpired:
@@ -83,4 +80,15 @@ def solve_instance_csp(instance_name, solver="gecode", timeout=300, queue=None):
     return res
 
 
+def main():
+    instances_folder = 'CSP/instances'
+    for filename in os.listdir(instances_folder):
+        if filename.endswith('.dzn'):
+            instance_id = os.path.splitext(filename)[0]
+            instance_path = os.path.join(instances_folder, filename)
+            res = solve_instance_csp(instance_id)
+            print(res)
+            print()
 
+if __name__ == '__main__':
+    main()
