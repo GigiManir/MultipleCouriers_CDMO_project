@@ -40,7 +40,7 @@ def main():
     approach = args.approach
     complete_solution[approach] = dict()
 
-    instances_folder = 'instances_copy'
+    instances_folder = 'instances'
     for filename in os.listdir(instances_folder):
         if filename.endswith('.dat'):
             instance_id = os.path.splitext(filename)[0]
