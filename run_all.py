@@ -30,33 +30,53 @@ def save_result(filename, result):
         with open(filename, 'w') as file:
             file.write(str(result))
 
-
 def main():
     parser = argparse.ArgumentParser(description='Choose the approach to solve the problem.')
-    parser.add_argument('--approach', choices=['MIP', 'SAT', 'SMT', 'CSP'], required=True, help='The approach to use for solving the problem.')
+    parser.add_argument('--approach', choices=["MIP", "alternativeMIP", "optimalMIP", 'SAT', 'SMT', 'CSP'], required=True, help='The approach to use for solving the problem.')
     args = parser.parse_args()
-
-    complete_solution = dict()
+    
     approach = args.approach
-    complete_solution[approach] = dict()
 
-    instances_folder = 'instances'
+    instances_folder = 'instances_copy'
     for filename in os.listdir(instances_folder):
         if filename.endswith('.dat'):
             instance_id = os.path.splitext(filename)[0]
             instance_path = os.path.join(instances_folder, filename)
             m, n, l, s, D = read_dat_file(instance_path)
             
-            if args.approach == 'MIP': res = solve_MIP_with_timeout(m, n, l, s, D)
-            elif args.approach == 'SAT': res = solve_SAT_with_timeout(m, n, l, s, D)
-            elif args.approach == 'SMT': res = solve_SMT_with_timeout(m, n, l, s, D)
-            elif args.approach == 'CSP': res = solve_instance_csp(instance_id)
+            results_file = f"results/{approach}/{instance_id}_result.json"
+            # Load existing results if file exists
+            if os.path.exists(results_file):
+                with open(results_file, 'r') as file:
+                    complete_solution = json.load(file)
+            else:
+                complete_solution = {}
 
-            complete_solution[approach][instance_id] = res
-            # print(res)
-            res = json.dumps(res, indent=4)
-            save_result(f'results/{approach}/{instance_id}_result.json', res)
-            # print()
+            # Initialize a new entry for the current approach if not already present
+            if approach not in complete_solution:
+                complete_solution[approach] = {}
+            else:
+                print(f'Skipping instance: {instance_id} with approach: {approach} as it has already been solved.')
+            
+            print(f'Processing instance: {instance_id} with approach: {approach}')
+            if approach == 'MIP': 
+                res = solve_MIP_with_timeout(m, n, l.copy(), s.copy(), D)
+            elif approach == 'SAT': 
+                res = solve_SAT_with_timeout(m, n, l, s, D)
+            elif approach == 'SMT': 
+                res = solve_SMT_with_timeout(m, n, l, s, D)
+            elif approach == 'CSP': 
+                res = solve_instance_csp(instance_id)
+            
+            print(f'Result for {instance_id}: {res}')
+
+            # Store the result for the current instance under the current approach
+            complete_solution[approach] = res
+
+            # Save the results to a json file
+            json_sol = json.dumps(complete_solution, indent=4)
+            save_result(results_file, json_sol)
+
 
 if __name__ == '__main__':
     main()
