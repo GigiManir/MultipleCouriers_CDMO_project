@@ -4,6 +4,14 @@ from mip import *
 import itertools
 from time import time
 import multiprocessing
+import json
+import winsound
+from gurobipy import setParam, Env
+
+def save_result(filename, result):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with open(filename, 'w') as file:
+            file.write(str(result))
 
 def read_dat_file(file_path):
     with open(file_path, 'r') as file:
@@ -31,6 +39,10 @@ def extract_solution_from_path_increment(lst):
             buff[val] = i + 1
     return list(dict(sorted(buff.items())).values())
 
+def play_sound():
+    duration = 1000  # milliseconds
+    freq = 440  # Hz
+    winsound.Beep(freq, duration)
 
 def mip_model(num_couriers, num_locations, max_weights, package_weights, distance_matrix, solver=None, timeout=300, queue=None):
     # Validate inputs
@@ -44,9 +56,12 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
     limit = num_locations
 
     # Create the model
-    model = Model()
+    print("Creating model")
+    # model = Model(solver_name=CBC)
+    model = Model(solver_name='GRB')
 
     """ VARIABLES """
+    print("Creating variables")
     # journeys[c][i][j] = 1 means that courier c go from i to j, with i the row and j the column
     # Basically a NxN matrix for each courrier
     # limit + 1 because of the depot
@@ -108,6 +123,7 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
             model += path_increment[courier][p] <= xsum([journeys[courier][p][p2] for p2 in range(limit + 1)]) * (limit + 1)
 
     """ CONSTRAINT """
+    print("Adding constraints")
     # Add constraints for weight capacity of each courier
     for courier in range(num_couriers):
         model.add_constr(weights[courier] <= max_weights[courier])
@@ -145,15 +161,22 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
     max_distance = model.add_var(name="max_distance", var_type=INTEGER)
     for courier in range(num_couriers):
         model.add_constr(max_distance >= distances[courier])
+    print("Adding objective")
     model.objective = minimize(max_distance)
 
-    start = time()
     # Optimize the model
     model.verbose = 0
     model.threads = -1
+    model.max_seconds = timeout
     try:
-        model.optimize(max_seconds=timeout)
+        print("Optimizing")
+        start = time()
+        model.optimize(max_seconds=timeout, max_seconds_same_incumbent=timeout)
+        time_needed = int(time() - start)
+        print("Optimization done")
+        print(f"Time needed for optimization: {time_needed}")
     except Exception as e:
+        print("Error in optimization")
         return {
             'time': 0,
             'optimal': False,
@@ -162,7 +185,7 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
         }
         return res
 
-    time_needed = int(time() - start)
+    # time_needed = int(time() - start)
     if time_needed == 301:
         time_needed = 300
 
@@ -187,18 +210,20 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
                "obj": int(model.objective_value),
                "sol": solution}
     else:
+        print("No solution found")
         res = {
             'time': 0,
             'optimal': False,
             'obj': 'N/A',
             'sol': []
         }
+    # print("Time needed for completing the process: ", time() - start)
     if queue:
         queue.put(res)
     return res
 
 
-def solve_MIP_with_timeout(m, n, l, s, D, solver_type=None, timeout: int = 300):
+def solve_MIP_with_timeout(m, n, l, s, D, solver_type=None, timeout: int = 360):
     queue = multiprocessing.Queue()
     process = multiprocessing.Process(target=mip_model, args=(m, n, l, s, D, solver_type, timeout, queue))
 
@@ -215,6 +240,7 @@ def solve_MIP_with_timeout(m, n, l, s, D, solver_type=None, timeout: int = 300):
             res['time'] = 300
         return res
     else:
+        print("Timeout")
         return {
             'time': 0,
             'optimal': False,
@@ -226,17 +252,26 @@ def solve_MIP_with_timeout(m, n, l, s, D, solver_type=None, timeout: int = 300):
 
 def main():
     # Read the data file
-    m, n, l, s, D = read_dat_file("instances/inst10.dat")
+    for filename in os.listdir('instances'):
+        if filename.endswith('.dat'):
+            instance_id = os.path.splitext(filename)[0]
+            instance_path = os.path.join('instances', filename)
+            m, n, l, s, D = read_dat_file(instance_path)
+            
+            print(f"Instance: {instance_id}")
+            result = mip_model(m, n, l, s, D)
+            # result = solve_MIP_with_timeout(m, n, l, s, D)
+            # Print the results
+            # print(f"Optimal: {result['optimal']}")
+            # print(f"Objective: {result['obj']}")
+            # print(f"Time: {result['time']} seconds")
+            # print(f"Solution: {result['sol']}")
+            # print()
+            # print()
+            result= json.dumps(result, indent=4)
+            save_result(f'results/MIP/{instance_id}_result.json', result)
 
-    # Solve the model
-    result = mip_model(m, n, l, s, D)
-    # result = solve_instance_mip(m, n, l, s, D)
-
-    # Print the results
-    print(f"Optimal: {result['optimal']}")
-    print(f"Objective: {result['obj']}")
-    print(f"Time: {result['time']} seconds")
-    print(f"Solution: {result['sol']}")
+            
 
 if __name__ == "__main__":
     main()
