@@ -32,7 +32,7 @@ def save_result(filename, result):
 
 def main():
     parser = argparse.ArgumentParser(description='Choose the approach to solve the problem.')
-    parser.add_argument('--approach', choices=["MIP", "alternativeMIP", "optimalMIP", 'SAT', 'SMT', 'CSP'], required=True, help='The approach to use for solving the problem.')
+    parser.add_argument('--approach', choices=["MIP", 'SAT', 'SMT', 'CSP'], required=True, help='The approach to use for solving the problem.')
     args = parser.parse_args()
     
     approach = args.approach
