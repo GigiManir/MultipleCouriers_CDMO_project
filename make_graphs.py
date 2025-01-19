@@ -78,7 +78,7 @@ def plot_all():
 
 def plot_one(model):
 
-    data_dir = base_dir / model
+    data_dir = pl.Path(base_dir) / model
 
     # Get the data
     data = {}
@@ -100,7 +100,7 @@ def plot_one(model):
             if model_name not in data_model:
                 data_model[model_name] = [_ for _ in range(instance_number)]
 
-            data_model[model_name][int(instance_id) - 1] = model_data['time']
+            data_model[model_name][int(instance_id[:2]) - 1] = model_data['time']
 
     label = list(data_model.keys())
     times = np.array(list(data_model.values()))

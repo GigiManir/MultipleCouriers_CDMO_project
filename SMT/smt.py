@@ -43,8 +43,8 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
     result_data = {
         'time': 0,
         'optimal': False,
-        'objective': 0,
-        'solution': []
+        'obj': 0,
+        'sol': []
         }
 
     package_weights += [0]  # Add dummy package with zero weight
@@ -151,12 +151,12 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
                     value = sum(pkg * last_best_solution.eval(assignment[pkg][t][courier]) for pkg in package_indices)
                     solution_matrix[courier][t] = last_best_solution.eval(value + 1).as_long()
 
-            result_data["solution"] = solution_matrix
+            result_data["sol"] = solution_matrix
             result_data["time"] = int(timer() - start_time)
-            result_data["objective"] = max_possible_distance
+            result_data["obj"] = max_possible_distance
             result_data["optimal"] = False
-            for i in range(len(result_data['solution'])):
-                result_data['solution'][i] = [num for num in result_data['solution'][i] if num != num_packages + 1]
+            for i in range(len(result_data['sol'])):
+                result_data['sol'][i] = [num for num in result_data['sol'][i] if num != num_packages + 1]
             output.append(result_data)
 
         if abs(min_possible_distance - max_possible_distance) <= 1 or iteration_count >= MAX_ITERATIONS:
@@ -171,8 +171,8 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
 def solve_courier_problem(m, n, limits, sizes, dist_matrix, solver=None, timeout=302):
     solution_data = {}
     optimize_courier_routes(m, n, dist_matrix, limits, sizes, solution_data=solution_data, timeout=timeout)
-    for i in range(len(solution_data['solution'])):
-        solution_data['solution'][i] = [num for num in solution_data['solution'][i] if num != n + 1]
+    for i in range(len(solution_data['sol'])):
+        solution_data['sol'][i] = [num for num in solution_data['sol'][i] if num != n + 1]
     solution_data['time'] = int(solution_data['time'])
     return solution_data
 
@@ -198,8 +198,8 @@ def solve_SMT_with_timeout(m, n, limits, sizes, dist_matrix, solver_type=None, t
         return {
             'time': 0,
             'optimal': False,
-            'objective': 'N/A',
-            'solution': []
+            'obj': 'N/A',
+            'sol': []
         }
 
 
@@ -230,10 +230,10 @@ if __name__ == '__main__':
       m, n, l, s, D = read_instance_from_file(filename)
       result = solve_SMT_with_timeout(m, n, l, s, D)
       print("Tempo di esecuzione:", result['time'])
-      print("Obiettivo:", result['objective'])
+      print("Obiettivo:", result['obj'])
       print("Ottimale:", result['optimal'])
       print("Soluzione:")
-      for sol in result['solution']:
+      for sol in result['sol']:
           print(sol)
 
 if __name__ == '__main__':
@@ -252,10 +252,10 @@ if __name__ == '__main__':
 
       # Stampa i risultati
       print("Tempo di esecuzione:", result['time'])
-      print("Obiettivo:", result['objective'])
+      print("Obiettivo:", result['obj'])
       print("Ottimale:", result['optimal'])
       print("Soluzione:")
-      for sol in result['solution']:
+      for sol in result['sol']:
           print(sol)
 
 # Instance [7, 11...21] N\A

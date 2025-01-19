@@ -30,12 +30,14 @@ def save_result(filename, result):
         with open(filename, 'w') as file:
             file.write(str(result))
 
-def main():
+def run_from_cmd():
     parser = argparse.ArgumentParser(description='Choose the approach to solve the problem.')
     parser.add_argument('--approach', choices=["MIP", 'SAT', 'SMT', 'CSP'], required=True, help='The approach to use for solving the problem.')
+    parser.add_argument('--solver', choices=["gecode",'chuffed'], required=False, help='The solver for CSP', default='Default')
     args = parser.parse_args()
     
     approach = args.approach
+    solver = args.solver
 
     instances_folder = 'instances_copy'
     for filename in os.listdir(instances_folder):
@@ -44,7 +46,7 @@ def main():
             instance_path = os.path.join(instances_folder, filename)
             m, n, l, s, D = read_dat_file(instance_path)
             
-            results_file = f"results/{approach}/{instance_id}_result.json"
+            results_file = f"res/{approach}/{instance_id}_result.json"
             # Load existing results if file exists
             if os.path.exists(results_file):
                 with open(results_file, 'r') as file:
@@ -53,8 +55,8 @@ def main():
                 complete_solution = {}
 
             # Initialize a new entry for the current approach if not already present
-            if approach not in complete_solution:
-                complete_solution[approach] = {}
+            if solver not in complete_solution:
+                complete_solution[solver] = {}
             else:
                 print(f'Skipping instance: {instance_id} with approach: {approach} as it has already been solved.')
             
@@ -66,17 +68,69 @@ def main():
             elif approach == 'SMT': 
                 res = solve_SMT_with_timeout(m, n, l, s, D)
             elif approach == 'CSP': 
-                res = solve_instance_csp(instance_id)
+                res = solve_instance_csp(instance_id, solver=solver)
             
             print(f'Result for {instance_id}: {res}')
 
             # Store the result for the current instance under the current approach
-            complete_solution[approach] = res
+            complete_solution[solver] = res
 
             # Save the results to a json file
             json_sol = json.dumps(complete_solution, indent=4)
             save_result(results_file, json_sol)
 
+def run_from_script(approach, solver):
+    instances_folder = 'instances_copy'
+    for filename in os.listdir(instances_folder):
+        if filename.endswith('.dat'):
+            instance_id = os.path.splitext(filename)[0]
+            instance_path = os.path.join(instances_folder, filename)
+            m, n, l, s, D = read_dat_file(instance_path)
+            
+            results_file = f"res/{approach}/{instance_id}_result.json"
+            # Load existing results if file exists
+            if os.path.exists(results_file):
+                with open(results_file, 'r') as file:
+                    complete_solution = json.load(file)
+            else:
+                complete_solution = {}
+
+            # Initialize a new entry for the current approach if not already present
+            if solver not in complete_solution:
+                complete_solution[solver] = {}
+            else:
+                print(f'Skipping instance: {instance_id} with approach: {approach} as it has already been solved.')
+            
+            print(f'Processing instance: {instance_id} with approach: {approach}')
+            if approach == 'MIP': 
+                res = solve_MIP_with_timeout(m, n, l.copy(), s.copy(), D)
+            elif approach == 'SAT': 
+                res = solve_SAT_with_timeout(m, n, l, s, D)
+            elif approach == 'SMT': 
+                res = solve_SMT_with_timeout(m, n, l, s, D)
+            elif approach == 'CSP': 
+                res = solve_instance_csp(instance_id, solver=solver)
+            
+            print(f'Result for {instance_id}: {res}')
+
+            # Store the result for the current instance under the current approach
+            complete_solution[solver] = res
+
+            # Save the results to a json file
+            json_sol = json.dumps(complete_solution, indent=4)
+            save_result(results_file, json_sol)
+
+def main():
+    approaches = ['MIP', 'SAT', 'SMT', 'CSP']
+    solvers = ['gecode', 'chuffed']
+    
+    for approach in approaches:
+        if approach != 'CSP':
+            solver='Default'
+            run_from_script(approach=approach,solver=solver)
+        else: 
+            for solver in solvers:
+                run_from_script(approach=approach, solver=solver)
 
 if __name__ == '__main__':
     main()
