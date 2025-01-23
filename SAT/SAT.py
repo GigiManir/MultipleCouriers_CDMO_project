@@ -306,57 +306,34 @@ def solve_instance_sat(
                 solver.add(lex_less(y[cou1], y[cou2]))
 
 
-
-    ''' OTHER SYMMETRY BREAKING CONSTRAINTS THAT PRODUCE BAD PERFORMANCE
-    # Two couriers path are exchangeable if the maximum weight of the two is 
-    # less than the minimum loading capacity
-    # in that case we impose an ordering between them
-    for cou1 in courier_range:
-        for cou2 in courier_range:
-            minload = min(l[cou1], l[cou2])
-            if (at_most_k([weights[cou1][pac] for pac in package_range for _ in range(s[pac])], minload) and
-                at_most_k([weights[cou2][pac] for pac in package_range for _ in range(s[pac])], minload)) and cou1 < cou2:
-                solver.add(lex_less(y[cou1], y[cou2]))'''
-    
-    '''
-    # se due viaggi di due corrieri sono della stessa lunghezza e i due corrieri hanno la possibilità di portare tutti e due
-    # i pacchi, allora c'è simmetria
-    for cou1 in courier_range:
-        for cou2 in courier_range:
-            w1 = sum(weights[cou1] * s)
-            w2 = sum(weights[cou2] * s)
-            condition_distances = True  # non riuscito ad implementarla
-            if cou1 < cou2 and (max(w1, w2) <= min(l[cou1], l[cou2])) and condition_distances:
-                solver.add(lex_less(y[cou1], y[cou2]))
-    '''
-
     ## OBJECTIVE FUNCTION ##
 
-    # Get the minimum and maximum distance
+    # Inizializzation
+    start_time = time()
+    last_best_model = None
+
     min_distance = math.inf
+    max_distance = 0
+
+    # Initialize min and max distances using a better heuristic
     for i in range(len(D)):
         for j in range(len(D[i])):
-            if D[i][j] <= min_distance and D[i][j] != 0:
-                min_distance = D[i][j]
+            if D[i][j] != 0:
+                min_distance = min(min_distance, D[i][j])
 
-    max_distance = 0
     for i in range(len(D)):
-        max_distance += max(D[i])
+        max_distance += sum(D[i])
 
-    start_time = time()
-    iteration = 1
-    last_best_model = None
     while True:
         k = int((min_distance + max_distance) / 2)
-
-        # Get the maximum distance
+        
         solver.push()
-
+        
         for cou in courier_range:
             courier_dist = [distances[cou][pac1][pac2] for pac1 in package_range for pac2 in package_range
                             for _ in range(D[pac1][pac2])]
             solver.add(at_most_k(courier_dist, k))
-
+        
         sol = solver.check()
 
         if sol != sat:
@@ -364,9 +341,8 @@ def solve_instance_sat(
         else:
             last_best_model = solver.model()
 
-            # Build the solution matrix and store the intermediate solution
             last_solution_matrix = [[0 for _ in range(last_time + 1)] for _ in range(len(courier_range))]
-            for pac, ti, cou, in variable_coordinates:
+            for pac, ti, cou in variable_coordinates:
                 if last_best_model[y[cou][ti][pac]]:
                     last_solution_matrix[cou][ti] = pac + 1
 
@@ -377,7 +353,6 @@ def solve_instance_sat(
                     pac1 = last_solution_matrix[cou][ti - 1] - 1
                     pac2 = last_solution_matrix[cou][ti] - 1
                     s += D[pac1][pac2]
-
                 distd += [s]
 
             max_distance = max(distd)
@@ -394,16 +369,21 @@ def solve_instance_sat(
         if (time() - start_time) >= timeout:
             print('TIME OUT OF RANGE')
             return model_result
-
+        
         if abs(min_distance - max_distance) <= 1:
             model_result['optimal'] = True
             result.append(model_result)
             return model_result
         else:
-            iteration += 1
-
-            solver.pop()
-
+            # If we find a solution, we might adjust the search space more aggressively
+            if sol == sat:
+                # If a solution was found, we can try narrowing the search space more aggressively
+                max_distance = k - 1  # Try a smaller max_distance for the next 
+            else:
+                # If no solution was found, we try a larger k
+                min_distance = k + 1
+        
+        solver.pop()    
 
 def solve_SAT_with_timeout(m, n, l, s, D, solver_type=None,
                            timeout: int = 300):
@@ -457,7 +437,7 @@ def main():
     results = []
 
     # Loop through all instances from inst01.dat to inst10.dat
-    for i in range(1, 5):
+    for i in range(1, 11):
         # Generate file path dynamically
         file_name = f'instances/inst{i:02d}.dat'
 
