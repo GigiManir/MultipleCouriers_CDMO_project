@@ -26,20 +26,6 @@ def at_most_one(variables):
     return [Not(And(pair[0], pair[1])) for pair in itertools.combinations(variables, 2)]
 
 
-# Define the constraint at most one with sequential encoding
-def at_most_one_seq(bool_vars):
-    constraints = []
-    n = len(bool_vars)
-    s = [Bool(f's_m_{i}') for i in range(n - 1)]
-    constraints.append(Or(Not(bool_vars[0]), s[0]))
-    constraints.append(Or(Not(bool_vars[-1]), Not(s[-1])))
-    for i in range(1, n - 1):
-        constraints.append(Or(Not(bool_vars[i]), s[i]))
-        constraints.append(Or(Not(s[i - 1]), s[i]))
-        constraints.append(Or(Not(bool_vars[i]), Not(s[i - 1])))
-    return And(constraints)
-
-
 # Define the constraint exactly one
 def exactly_one(variables):
     """
@@ -49,56 +35,6 @@ def exactly_one(variables):
     """
 
     return at_most_one(variables) + [at_least_one(variables)]
-
-# Define the constraint exactly one with sequential encoding
-def exactly_one_seq(variables):
-    """
-    Return constraint that exactly one of the variable in variables is true with sequential encoding.
-    :param bool_vars: List of variables
-    :param context: Context of the variables
-    """
-
-    return And(at_most_one_seq(variables), at_least_one(variables))
-
-
-# Define the constraint at most k with sequential encoding
-def at_most_k_seq(variables, k):
-    """
-    Return constraint that at most k of the variables in variables are true using sequential encoding.
-    :param variables: List of variables
-    :param k: Maximum number of variables that can be true
-    :param context: Context of the variables
-    :return: Conjunction of constraints
-    """
-
-    constraints = []
-    n = len(variables)
-
-    if k <= 0:
-        return And([Not(v) for v in variables])  # All variables must be false
-    if n <= k:
-        return True  # The constraint is trivially satisfied if the number of variables is less than or equal to k
-
-    # Auxiliary variables
-    s = [[Bool(f's_{i}_{j}') for j in range(k)] for i in range(n)]
-
-    # Encoding the constraints
-    constraints.append(Or(Not(variables[0]), s[0][0]))
-    for j in range(1, k):
-        constraints.append(Not(s[0][j]))
-
-    for i in range(1, n):
-        constraints.append(Or(Not(variables[i]), s[i][0]))
-        constraints.append(Or(Not(s[i - 1][0]), s[i][0]))
-        constraints.append(Or(Not(variables[i]), Not(s[i - 1][0])))
-
-        for j in range(1, k):
-            constraints.append(Or(Not(variables[i]), Not(s[i - 1][j - 1]), s[i][j]))
-            constraints.append(Or(Not(s[i - 1][j]), s[i][j]))
-
-        constraints.append(Not(s[i - 1][k - 1]))
-
-    return And(constraints)
 
 
 def at_most_k(variables, k):
