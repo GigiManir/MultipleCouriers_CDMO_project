@@ -26,20 +26,6 @@ def at_most_one(variables):
     return [Not(And(pair[0], pair[1])) for pair in itertools.combinations(variables, 2)]
 
 
-# Define the constraint at most one with sequential encoding
-def at_most_one_seq(bool_vars):
-    constraints = []
-    n = len(bool_vars)
-    s = [Bool(f's_m_{i}') for i in range(n - 1)]
-    constraints.append(Or(Not(bool_vars[0]), s[0]))
-    constraints.append(Or(Not(bool_vars[-1]), Not(s[-1])))
-    for i in range(1, n - 1):
-        constraints.append(Or(Not(bool_vars[i]), s[i]))
-        constraints.append(Or(Not(s[i - 1]), s[i]))
-        constraints.append(Or(Not(bool_vars[i]), Not(s[i - 1])))
-    return And(constraints)
-
-
 # Define the constraint exactly one
 def exactly_one(variables):
     """
@@ -49,56 +35,6 @@ def exactly_one(variables):
     """
 
     return at_most_one(variables) + [at_least_one(variables)]
-
-# Define the constraint exactly one with sequential encoding
-def exactly_one_seq(variables):
-    """
-    Return constraint that exactly one of the variable in variables is true with sequential encoding.
-    :param bool_vars: List of variables
-    :param context: Context of the variables
-    """
-
-    return And(at_most_one_seq(variables), at_least_one(variables))
-
-
-# Define the constraint at most k with sequential encoding
-def at_most_k_seq(variables, k):
-    """
-    Return constraint that at most k of the variables in variables are true using sequential encoding.
-    :param variables: List of variables
-    :param k: Maximum number of variables that can be true
-    :param context: Context of the variables
-    :return: Conjunction of constraints
-    """
-
-    constraints = []
-    n = len(variables)
-
-    if k <= 0:
-        return And([Not(v) for v in variables])  # All variables must be false
-    if n <= k:
-        return True  # The constraint is trivially satisfied if the number of variables is less than or equal to k
-
-    # Auxiliary variables
-    s = [[Bool(f's_{i}_{j}') for j in range(k)] for i in range(n)]
-
-    # Encoding the constraints
-    constraints.append(Or(Not(variables[0]), s[0][0]))
-    for j in range(1, k):
-        constraints.append(Not(s[0][j]))
-
-    for i in range(1, n):
-        constraints.append(Or(Not(variables[i]), s[i][0]))
-        constraints.append(Or(Not(s[i - 1][0]), s[i][0]))
-        constraints.append(Or(Not(variables[i]), Not(s[i - 1][0])))
-
-        for j in range(1, k):
-            constraints.append(Or(Not(variables[i]), Not(s[i - 1][j - 1]), s[i][j]))
-            constraints.append(Or(Not(s[i - 1][j]), s[i][j]))
-
-        constraints.append(Not(s[i - 1][k - 1]))
-
-    return And(constraints)
 
 
 def at_most_k(variables, k):
@@ -306,57 +242,34 @@ def solve_instance_sat(
                 solver.add(lex_less(y[cou1], y[cou2]))
 
 
-
-    ''' OTHER SYMMETRY BREAKING CONSTRAINTS THAT PRODUCE BAD PERFORMANCE
-    # Two couriers path are exchangeable if the maximum weight of the two is 
-    # less than the minimum loading capacity
-    # in that case we impose an ordering between them
-    for cou1 in courier_range:
-        for cou2 in courier_range:
-            minload = min(l[cou1], l[cou2])
-            if (at_most_k([weights[cou1][pac] for pac in package_range for _ in range(s[pac])], minload) and
-                at_most_k([weights[cou2][pac] for pac in package_range for _ in range(s[pac])], minload)) and cou1 < cou2:
-                solver.add(lex_less(y[cou1], y[cou2]))'''
-    
-    '''
-    # se due viaggi di due corrieri sono della stessa lunghezza e i due corrieri hanno la possibilità di portare tutti e due
-    # i pacchi, allora c'è simmetria
-    for cou1 in courier_range:
-        for cou2 in courier_range:
-            w1 = sum(weights[cou1] * s)
-            w2 = sum(weights[cou2] * s)
-            condition_distances = True  # non riuscito ad implementarla
-            if cou1 < cou2 and (max(w1, w2) <= min(l[cou1], l[cou2])) and condition_distances:
-                solver.add(lex_less(y[cou1], y[cou2]))
-    '''
-
     ## OBJECTIVE FUNCTION ##
 
-    # Get the minimum and maximum distance
+    # Inizializzation
+    start_time = time()
+    last_best_model = None
+
     min_distance = math.inf
+    max_distance = 0
+
+    # Initialize min and max distances using a better heuristic
     for i in range(len(D)):
         for j in range(len(D[i])):
-            if D[i][j] <= min_distance and D[i][j] != 0:
-                min_distance = D[i][j]
+            if D[i][j] != 0:
+                min_distance = min(min_distance, D[i][j])
 
-    max_distance = 0
     for i in range(len(D)):
-        max_distance += max(D[i])
+        max_distance += sum(D[i])
 
-    start_time = time()
-    iteration = 1
-    last_best_model = None
     while True:
         k = int((min_distance + max_distance) / 2)
-
-        # Get the maximum distance
+        
         solver.push()
-
+        
         for cou in courier_range:
             courier_dist = [distances[cou][pac1][pac2] for pac1 in package_range for pac2 in package_range
                             for _ in range(D[pac1][pac2])]
             solver.add(at_most_k(courier_dist, k))
-
+        
         sol = solver.check()
 
         if sol != sat:
@@ -364,9 +277,8 @@ def solve_instance_sat(
         else:
             last_best_model = solver.model()
 
-            # Build the solution matrix and store the intermediate solution
             last_solution_matrix = [[0 for _ in range(last_time + 1)] for _ in range(len(courier_range))]
-            for pac, ti, cou, in variable_coordinates:
+            for pac, ti, cou in variable_coordinates:
                 if last_best_model[y[cou][ti][pac]]:
                     last_solution_matrix[cou][ti] = pac + 1
 
@@ -377,7 +289,6 @@ def solve_instance_sat(
                     pac1 = last_solution_matrix[cou][ti - 1] - 1
                     pac2 = last_solution_matrix[cou][ti] - 1
                     s += D[pac1][pac2]
-
                 distd += [s]
 
             max_distance = max(distd)
@@ -394,16 +305,21 @@ def solve_instance_sat(
         if (time() - start_time) >= timeout:
             print('TIME OUT OF RANGE')
             return model_result
-
+        
         if abs(min_distance - max_distance) <= 1:
             model_result['optimal'] = True
             result.append(model_result)
             return model_result
         else:
-            iteration += 1
-
-            solver.pop()
-
+            # If we find a solution, we might adjust the search space more aggressively
+            if sol == sat:
+                # If a solution was found, we can try narrowing the search space more aggressively
+                max_distance = k - 1  # Try a smaller max_distance for the next 
+            else:
+                # If no solution was found, we try a larger k
+                min_distance = k + 1
+        
+        solver.pop()    
 
 def solve_SAT_with_timeout(m, n, l, s, D, solver_type=None,
                            timeout: int = 300):
@@ -457,7 +373,7 @@ def main():
     results = []
 
     # Loop through all instances from inst01.dat to inst10.dat
-    for i in range(1, 5):
+    for i in range(1, 11):
         # Generate file path dynamically
         file_name = f'instances/inst{i:02d}.dat'
 
