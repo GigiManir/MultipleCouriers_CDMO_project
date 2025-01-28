@@ -16,4 +16,12 @@ RUN apt-get update \
 RUN pip install --break-system-packages --no-cache-dir -r requirements.txt
 
 # Define the command to run the application
-# CMD ["python", "your_script.py"]
+ENV GUROBI_HOME="/src/gurobi11.0.3_linux64/gurobi1103/linux64"
+ENV PATH="/src/gurobi11.0.3_linux64/gurobi1103/linux64/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/src/gurobi11.0.3_linux64/gurobi1103/linux64/lib"
+ENV GRB_LICENSE_FILE="/src/gurobi.lic"
+ENV GUROBI_VERSION="11.0.3"
+
+RUN python3 run_all.py
+
+# CMD ["python3", "run_all.py"]
