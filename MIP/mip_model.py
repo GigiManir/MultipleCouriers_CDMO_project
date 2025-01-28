@@ -5,7 +5,6 @@ import itertools
 from time import time
 import multiprocessing
 import json
-import winsound
 from gurobipy import setParam, Env
 
 def save_result(filename, result):
@@ -39,10 +38,6 @@ def extract_solution_from_path_increment(lst):
             buff[val] = i + 1
     return list(dict(sorted(buff.items())).values())
 
-def play_sound():
-    duration = 1000  # milliseconds
-    freq = 440  # Hz
-    winsound.Beep(freq, duration)
 
 def mip_model(num_couriers, num_locations, max_weights, package_weights, distance_matrix, solver=None, timeout=300, queue=None):
     # Validate inputs
@@ -56,12 +51,12 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
     limit = num_locations
 
     # Create the model
-    print("Creating model")
+    # print("Creating model")
     # model = Model(solver_name=CBC)
     model = Model(solver_name='GRB')
 
     """ VARIABLES """
-    print("Creating variables")
+    # print("Creating variables")
     # journeys[c][i][j] = 1 means that courier c go from i to j, with i the row and j the column
     # Basically a NxN matrix for each courrier
     # limit + 1 because of the depot
@@ -123,7 +118,7 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
             model += path_increment[courier][p] <= xsum([journeys[courier][p][p2] for p2 in range(limit + 1)]) * (limit + 1)
 
     """ CONSTRAINT """
-    print("Adding constraints")
+    # print("Adding constraints")
     # Add constraints for weight capacity of each courier
     for courier in range(num_couriers):
         model.add_constr(weights[courier] <= max_weights[courier])
@@ -161,7 +156,7 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
     max_distance = model.add_var(name="max_distance", var_type=INTEGER)
     for courier in range(num_couriers):
         model.add_constr(max_distance >= distances[courier])
-    print("Adding objective")
+    # print("Adding objective")
     model.objective = minimize(max_distance)
 
     # Optimize the model
@@ -169,12 +164,12 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
     model.threads = -1
     model.max_seconds = timeout
     try:
-        print("Optimizing")
+        # print("Optimizing")
         start = time()
         model.optimize(max_seconds=timeout, max_seconds_same_incumbent=timeout)
         time_needed = int(time() - start)
-        print("Optimization done")
-        print(f"Time needed for optimization: {time_needed}")
+        # print("Optimization done")
+        # print(f"Time needed for optimization: {time_needed}")
     except Exception as e:
         print("Error in optimization")
         return {
