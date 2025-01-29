@@ -1,6 +1,7 @@
 matplotlib
 multiprocess
 numpy
+minizinc
 gurobipy==11.0.3
 mip
 z3-solver

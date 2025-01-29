@@ -25,7 +25,7 @@ def solve_instance_csp(instance_name, solver="gecode", timeout=300, queue=None):
         result = instance.solve(timeout=t.timedelta(seconds=timeout))
         end_time = tm.time()
         total_time = end_time - start_time 
-        print(result.status)
+        # print(result.status)
         if result.status is minizinc.Status.UNSATISFIABLE:
                                 return {
                                     'time': int(result.statistics['solveTime'].total_seconds()), 
