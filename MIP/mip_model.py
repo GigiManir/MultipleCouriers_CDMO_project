@@ -52,8 +52,8 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
 
     # Create the model
     # print("Creating model")
-    # model = Model(solver_name=CBC)
     model = Model(solver_name='GRB')
+    # model = Model(solver_name=CBC)
 
     """ VARIABLES """
     # print("Creating variables")
@@ -74,7 +74,13 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
         distance_matrix[l1][l2] * journeys[courier][l1][l2] for l1 in range(limit + 1) for l2 in range(limit + 1))
         for courier in range(num_couriers)]
 
-    """ PATH CORRECTNESS """
+    path_increment = [[model.add_var(name=f"path_increment_{courier}_{l}", var_type=INTEGER, lb=0, ub=num_locations)
+                       for l in range(limit + 1)]
+                      for courier in range(num_couriers)]
+    
+    ''' CONSTRAINTS '''
+    # print("Adding constraints")
+    """ VALID TRANSITIONS """
     for courier in range(num_couriers):
         # If y[courier][l1][l2] == 1 then y[courier][l3][l1] == 1
         for l1 in range(limit + 1):
@@ -92,9 +98,6 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
                 # If condition is 1, results must be >=1, but if condition is 0 courrier may have still be in l1 in another moment
                 model += results >= condition
 
-    path_increment = [[model.add_var(name=f"path_increment_{courier}_{l}", var_type=INTEGER, lb=0, ub=num_locations)
-                       for l in range(limit + 1)]
-                      for courier in range(num_couriers)]
 
     # We fix depot as starting point of the path
     for courier in range(num_couriers):
@@ -117,8 +120,6 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
         for p in range(limit + 1):
             model += path_increment[courier][p] <= xsum([journeys[courier][p][p2] for p2 in range(limit + 1)]) * (limit + 1)
 
-    """ CONSTRAINT """
-    # print("Adding constraints")
     # Add constraints for weight capacity of each courier
     for courier in range(num_couriers):
         model.add_constr(weights[courier] <= max_weights[courier])
