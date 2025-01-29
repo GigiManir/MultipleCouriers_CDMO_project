@@ -1,69 +1,72 @@
-import re
 import os
-import subprocess
-import multiprocessing
-
-
-def extract_info_from_output(output_str):
-    try:
-        objective = re.search(r'z\s*=\s*(\d+);', output_str).group(1)
-
-        # Extract journeys matrix
-        journeys_text = re.search(r'journeys\s*=\s*\[([^\]]+)\]', output_str, re.DOTALL).group(1)
-        journeys_rows = journeys_text.strip().split('|')[1:-1]
-        journeys = [[int(num) for num in row.split(',')] for row in journeys_rows]
-
-        # Extract time values
-        solve_time = re.search(r'solveTime=(\d+\.\d+)', output_str).group(1)
-
-        return objective, journeys, int(float(solve_time))
-    except Exception as e:
-        print(e)
+import datetime as t
+import time  as tm
+import minizinc
 
 
 def solve_instance_csp(instance_name, solver="gecode", timeout=300, queue=None):
-    model_path = os.path.abspath(f"CSP/model_final.mzn")
+    model_path = os.path.abspath(f"CSP/model.mzn")
     instance_path = os.path.abspath(f"CSP/instances/{instance_name}.dzn")
-    command = [
-        'minizinc',
-        f'--solver', f'{solver}',
-        f'{model_path}',
-        f'{instance_path}',
-        '--solver-statistics',
-        f'--solver-time-limit', f'{timeout * 1000}'
-    ]
-    if not os.path.exists(command[3]):
-        print(f'File {command[3]} does not exist')
-    if not os.path.exists(command[4]):
-        print(f'File {command[4]} does not exist')
+
+    # Load the MiniZinc model
+    model = minizinc.Model()
+    model.add_file(model_path)
+    model.add_file(instance_path)
+
+    # Create a MiniZinc instance
+    instance = minizinc.Instance(minizinc.Solver.lookup(solver), model)
+
+    # Set the time limit (in milliseconds)
+    instance["time_limit"] = timeout * 1000
 
     try:
-        # Run the command and capture the output
-        result = subprocess.run(command, capture_output=True, text=True, timeout=302)
-
-        if result.returncode != 0:
+        # Solve the instance
+        start_time = tm.time()
+        result = instance.solve(timeout=t.timedelta(seconds=timeout))
+        end_time = tm.time()
+        total_time = end_time - start_time 
+        print(result.status)
+        if result.status is minizinc.Status.UNSATISFIABLE:
+                                return {
+                                    'time': int(result.statistics['solveTime'].total_seconds()), 
+                                    'optimal': False, 
+                                    'obj': "N/A", 
+                                    'sol': []
+                                    }
+                               
+        elif result.status is minizinc.Status.UNKNOWN:
             return {
-                'time': 0,
-                'optimal': False,
-                'obj': 'N/A',
+                'time': timeout, 
+                'optimal': False, 
+                'obj': "N/A", 
                 'sol': []
-            }
+                }
+        
+        else:
+            if total_time < timeout:
+                optimal = True
+                time = result.statistics['solveTime'].total_seconds() 
+            else:
+                optimal = False
+                time =timeout
+            
+           
+            objective = result['z']
+            solution = result['journeys']
+            for i in range(len(solution)):
+                solution[i] = [num for num in solution[i] if num != max(solution[i])] 
+            
 
-        # Print the standard output and standard error
-        output = result.stdout
-    except subprocess.TimeoutExpired:
-        return {
-            'time': 0,
-            'optimal': False,
-            'obj': 'N/A',
-            'sol': []
-        }
+            return {
+                'time': int(time), 
+                'optimal': optimal, 
+                'obj': objective, 
+                'sol': solution
+                }
+            
+    
     except Exception as e:
         print(e)
-
-    if "=====UNKNOWN=====" not in output:
-        objective, solution, time_needed = extract_info_from_output(output)
-    else:
         return {
             'time': 0,
             'optimal': False,
@@ -71,24 +74,11 @@ def solve_instance_csp(instance_name, solver="gecode", timeout=300, queue=None):
             'sol': []
         }
 
-    for i in range(len(solution)):
-        solution[i] = [num for num in solution[i] if num != max(solution[i])]
-
-    res = {"time": time_needed,
-           "optimal": True if time_needed < 300 else False,
-           "obj": int(objective),
-           "sol": solution}
-    if queue:
-        queue.put(res)
-    return res
-
-
 def main():
-    instances_folder = 'CSP/instances'
+    instances_folder = 'instances'
     for filename in os.listdir(instances_folder):
         if filename.endswith('.dzn'):
             instance_id = os.path.splitext(filename)[0]
-            instance_path = os.path.join(instances_folder, filename)
             res = solve_instance_csp(instance_id)
             print(res)
             print()

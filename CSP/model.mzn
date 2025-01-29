@@ -12,19 +12,22 @@ array [1..n] of int: s; %size of each item
 array [1..n+1, 1..n+1] of int: D; %matrix of distances
 
 %DECISION VARIABLE
-%we define a variable limit which defines the upper bound for the maximum number of location a courier can visit. We add 2 locations in order to take into account the starting and ending point
-
-int: limit = n - m + 2;
+int: limit= (ceil(1.5 * n/m)+ 2);
+%int: limit = n - m + 2;
 
 array[1..m, 1..limit+1] of var 1..n+1: journeys;  
 
 %We define an array item_bin where item_bin[i] represents the courier (1..m) carrying item i (1..n).
 array[1..n] of var 1..m: item_bin; 
+
 %We establish the relatioship between item_bin and journeys
 constraint forall(i in 1..m, j in 2..limit where journeys[i, j] != n+1) (
     item_bin[journeys[i, j]] == i
 );
- 
+
+constraint forall(k in 1..n) (
+    exists(j in 2..limit) (journeys[item_bin[k], j] == k)
+);
 % Lower bound: minimum distance for a round trip with one item
 int: dist_lb = min(i in 1..n) (D[n+1,i] + D[i,n+1]);
 
@@ -37,11 +40,12 @@ int: rho_ub = dist_ub;
 
 % array containing the total distances of each courrier
 array [1..m] of var dist_lb..dist_ub: distances = [sum(j in 1..limit) (D[journeys[i,j], journeys[i,j+1]]) | i in 1..m];
+
 % Objective variable with improved bounds
 var rho_lb..rho_ub: z;
 
 
-%EXPLICIT CONSTRAINT
+% CONSTRAINT
 %each courier tour must start and end at the base (n+1)
 constraint forall(i in 1..m) (
     journeys[i, 1] == n+1
@@ -55,9 +59,6 @@ constraint forall(i in 1..m) (
 constraint bin_packing_capa(l, item_bin, s);
 
 
-
-
-%IMPLICIT CONSTRAINT
 %if a courier's journey reaches the origin point (n + 1), all subsequent points in the row must also be the origin point. This ensures that once a courier ends its tour, no further deliveries are made.
 
 constraint forall(i in 1..m)(
@@ -65,6 +66,7 @@ constraint forall(i in 1..m)(
         (journeys[i, j] == n+1) -> forall(k in j+1..limit+1)(journeys[i, k] == n+1)
     )
 );
+
 %each courier deliver a package
 constraint forall(i in 1..m)(
     exists(j in 2..limit)(journeys[i, j] != n+1)
@@ -77,7 +79,7 @@ constraint forall (i in 1..m) (journeys[i,2] != n+1);
 constraint alldifferent([journeys[i,j] | i in 1..m, j in 2..limit where journeys[i,j] != n+1]);
 
 % ensures that exactly n packages are assigned to couriers, so every package is carried by someone
-constraint(sum(i in 1..m, j in 2..limit where journeys[i,j] != n+1) (1)) == n;
+%constraint(sum(i in 1..m, j in 2..limit where journeys[i,j] != n+1) (1)) == n;
 
 
 % ----- SIMMETRY BREAKING CONSTRAINTS -----
@@ -96,8 +98,9 @@ z = max(i in 1..m) (distances[i]);
 
 % Search strategy
 solve :: seq_search([
-    int_search(journeys, first_fail, indomain_split),  
-    int_search(distances, first_fail, indomain_split),
-    %int_search(weight, first_fail, indomain_random),  
-    restart_geometric(1.2, 50)                           
-]) minimize(z) :: relax_and_reconstruct(distances, 95);
+     int_search(journeys, first_fail, indomain_split), 
+     int_search(distances, first_fail, indomain_min), 
+     int_search(item_bin, first_fail, indomain_split),
+    % relax_and_reconstruct(item_bin, 70),
+                
+  ]) minimize(z) 
