@@ -54,7 +54,7 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
     # print("Creating model")
     model = Model(solver_name='GRB')
     # model = Model(solver_name=CBC)
-
+    # print(f"Solver: {model.solver_name}")
     """ VARIABLES """
     # print("Creating variables")
     # journeys[c][i][j] = 1 means that courier c go from i to j, with i the row and j the column
@@ -182,7 +182,7 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
         return res
 
     # time_needed = int(time() - start)
-    if time_needed == 301:
+    if time_needed >= 301:
         time_needed = 300
 
     # Build the solution
@@ -219,7 +219,7 @@ def mip_model(num_couriers, num_locations, max_weights, package_weights, distanc
     return res
 
 
-def solve_MIP_with_timeout(m, n, l, s, D, solver_type=None, timeout: int = 360):
+def solve_MIP_with_timeout(m, n, l, s, D, solver_type=None, timeout: int = 300):
     queue = multiprocessing.Queue()
     process = multiprocessing.Process(target=mip_model, args=(m, n, l, s, D, solver_type, timeout, queue))
 
