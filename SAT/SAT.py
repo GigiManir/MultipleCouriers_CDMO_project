@@ -125,7 +125,7 @@ def solve_instance_sat(
 
     ## RANGES ##
     package_range = range(n + 1)
-    time_range = range(n - m + 3)
+    time_range = range(math.ceil((1.5*n/m)+2))
     time_range_no_zero = range(1, time_range[-1] + 1)
     courier_range = range(m)
 
@@ -197,15 +197,7 @@ def solve_instance_sat(
 
 
     ## OPTIMIZATION CONSTRAINTS ##
-
-    # Couriers must immediately start with a package after the base if they carry a package
-    for cou in courier_range:
-        for ti in time_range_no_zero:
-            a = y[cou][ti][base_package]
-            b = y[cou][1][base_package]
-
-            solver.add(Implies(Not(a), Not(b)))
-
+        
     # Couriers cannot go back to the base before delivering all the other packages
     for cou in courier_range:
         for ti in time_range_no_zero:
@@ -215,22 +207,11 @@ def solve_instance_sat(
                 b = y[cou][ti2][base_package]
                 solver.add(Implies(a, b))
 
-    # Couriers have to bring at least one package
-    for cou in courier_range:
-        solver.add(at_least_one([y[cou][ti][pac] for ti in time_range_no_zero for pac in range(n)]))
-
-    # Ensure exactly n packages are assigned to couriers
-    solver.add(at_most_k([y[cou][ti][pac]
-                      for cou in courier_range
-                      for ti in time_range
-                      for pac in package_range if pac != base_package], n))
-
     # Couriers must stay at the base once they return
     for cou in courier_range:
         for ti in time_range_no_zero:
             solver.add(Implies(y[cou][ti][base_package],
                            And([y[cou][_t][base_package] for _t in range(ti, last_time + 1)])))
-
 
     ## SYMMETRY BREAKING CONSTRAINTS ##
 
@@ -373,7 +354,7 @@ def main():
     results = []
 
     # Loop through all instances from inst01.dat to inst10.dat
-    for i in range(1, 11):
+    for i in range(1, 22):
         # Generate file path dynamically
         file_name = f'instances/inst{i:02d}.dat'
 
