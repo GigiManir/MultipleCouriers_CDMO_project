@@ -50,7 +50,7 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
     package_weights += [0]  # Add dummy package with zero weight
 
     package_indices = range(num_packages + 1)
-    time_slots = range(num_packages - num_couriers + 3)
+    time_slots = range((math.ceil(1.5 * num_packages/num_couriers)+ 2))
     non_zero_time_slots = range(1, time_slots[-1] + 1)
 
     courier_indices = range(num_couriers)
@@ -60,17 +60,17 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
     solver = Then('simplify', 'elim-term-ite', 'solve-eqs', 'smt').solver()
 
     # Create variables for the solution matrix
-    assignment = [[[Int(f"assign_{pkg}_{t}_{courier}") for courier in courier_indices] for t in time_slots] for pkg in package_indices]
+    journeys = [[[Int(f"assign_{pkg}_{t}_{courier}") for courier in courier_indices] for t in time_slots] for pkg in package_indices]
 
     # Add constraints to ensure valid assignments
     for pkg in package_indices:
         for courier in courier_indices:
             for t in time_slots:
-                solver.add(assignment[pkg][t][courier] <= 1)
-                solver.add(assignment[pkg][t][courier] >= 0)
+                solver.add(journeys[pkg][t][courier] <= 1)
+                solver.add(journeys[pkg][t][courier] >= 0)
 
     # Calculate total weight carried by each courier
-    courier_weights = [Sum([package_weights[pkg] * assignment[pkg][t][courier] for t in time_slots for pkg in package_indices]) for courier in courier_indices]
+    courier_weights = [Sum([package_weights[pkg] * journeys[pkg][t][courier] for t in time_slots for pkg in package_indices]) for courier in courier_indices]
 
     # Calculate distances traveled by each courier
     travel_distances = []
@@ -79,8 +79,8 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
         for t in non_zero_time_slots:
             for p1 in package_indices:
                 for p2 in package_indices:
-                    pickup = assignment[p1][t - 1][courier] == 1
-                    dropoff = assignment[p2][t][courier] == 1
+                    pickup = journeys[p1][t - 1][courier] == 1
+                    dropoff = journeys[p2][t][courier] == 1
                     courier_dists.append(distances[p1][p2] * And(pickup, dropoff))
         travel_distances.append(Sum(courier_dists))
 
@@ -88,18 +88,18 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
     for pkg in package_indices:
         if pkg == final_package:
             continue
-        solver.add(Sum([assignment[pkg][t][courier] for t in time_slots for courier in courier_indices]) == 1)
+        solver.add(Sum([journeys[pkg][t][courier] for t in time_slots for courier in courier_indices]) == 1)
 
     # Ensure valid time slots and couriers are assigned to packages
     for courier in courier_indices:
         for t in time_slots:
-            solver.add(Sum([assignment[pkg][t][courier] for pkg in package_indices]) == 1)
-        solver.add(Sum([assignment[pkg][t][courier] for pkg in package_indices if pkg != final_package for t in time_slots]) >= 1)
+            solver.add(Sum([journeys[pkg][t][courier] for pkg in package_indices]) == 1)
+        solver.add(Sum([journeys[pkg][t][courier] for pkg in package_indices if pkg != final_package for t in time_slots]) >= 1)
 
     # Ensure the final package is the first and last in the route for each courier
     for courier in courier_indices:
-        solver.add(assignment[final_package][0][courier] == 1)
-        solver.add(assignment[final_package][final_time_slot][courier] == 1)
+        solver.add(journeys[final_package][0][courier] == 1)
+        solver.add(journeys[final_package][final_time_slot][courier] == 1)
 
     # Enforce weight constraints
     for courier in courier_indices:
@@ -107,20 +107,20 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
 
     # Additional constraints for base package handling
     for courier in courier_indices:
-        solver.add(assignment[final_package][1][courier] != 1)
+        solver.add(journeys[final_package][1][courier] != 1)
 
     for courier in courier_indices:
         for t in non_zero_time_slots:
-            current_pickup = assignment[final_package][t][courier]
+            current_pickup = journeys[final_package][t][courier]
             for t2 in range(t + 1, final_time_slot):
-                future_pickup = assignment[final_package][t2][courier]
+                future_pickup = journeys[final_package][t2][courier]
                 solver.add(Implies(current_pickup == 1, future_pickup == 1))
 
     # Symmetry breaking by lexicographical comparison
     for c1 in courier_indices:
         for c2 in courier_indices:
             if c1 < c2 and weight_limits[c1] == weight_limits[c2]:
-                solver.add(compare_matrices_lex(assignment[c1], assignment[c2]))
+                solver.add(compare_matrices_lex(journeys[c1], journeys[c2]))
 
     # Objective: minimize the maximum distance any courier has to travel
     max_travel_distance = get_max_value(travel_distances)
@@ -148,7 +148,7 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
             solution_matrix = [[0 for _ in range(final_time_slot + 1)] for _ in range(len(courier_indices))]
             for courier in courier_indices:
                 for t in time_slots:
-                    value = sum(pkg * last_best_solution.eval(assignment[pkg][t][courier]) for pkg in package_indices)
+                    value = sum(pkg * last_best_solution.eval(journeys[pkg][t][courier]) for pkg in package_indices)
                     solution_matrix[courier][t] = last_best_solution.eval(value + 1).as_long()
 
             result_data["sol"] = solution_matrix
@@ -168,7 +168,7 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
             solver.pop()
 
 # Function to solve a courier optimization problem using Z3 SMT solver
-def solve_courier_problem(m, n, limits, sizes, dist_matrix, solver=None, timeout=302):
+def solve_courier_problem(m, n, limits, sizes, dist_matrix, solver=None, timeout=300):
     solution_data = {}
     optimize_courier_routes(m, n, dist_matrix, limits, sizes, solution_data=solution_data, timeout=timeout)
     for i in range(len(solution_data['sol'])):
@@ -177,7 +177,7 @@ def solve_courier_problem(m, n, limits, sizes, dist_matrix, solver=None, timeout
     return solution_data
 
 # Solve the problem with a timeout
-def solve_SMT_with_timeout(m, n, limits, sizes, dist_matrix, solver_type=None, timeout: int = 302):
+def solve_SMT_with_timeout(m, n, limits, sizes, dist_matrix, solver_type=None, timeout: int = 300):
     manager = multiprocessing.Manager()
     results = manager.list()
     process = multiprocessing.Process(target=optimize_courier_routes, args=(results, m, n, dist_matrix, limits, sizes))
@@ -192,7 +192,7 @@ def solve_SMT_with_timeout(m, n, limits, sizes, dist_matrix, solver_type=None, t
     if results:
         res = results[-1]
         if not res['optimal']:
-            res['time'] = 302
+            res['time'] = 300
         return res
     else:
         return {
