@@ -14,8 +14,10 @@ To run the project with docker:
 - ```docker run -it cdmo``` to run the docker image.
 
 Then on the bash terminal it is possible to run the script with the command:
-- ```python3 run_single_approach.py``` to optimize all the instances with a single approach and solver.
 - ```python3 run_all.py``` to optimize all the instances with all the approaches and solvers
+- ```python3 run_single_approach.py``` to optimize all the instances with a single approach and solver.
+- ```python3 run_single_instance.py``` to optimize a single instances with a single approach and solver.
+- ```python3 run_multiple_instances.py``` to optimize multiple instances with a single approach and solver.
 ---
 By:
 - Irene Burri
