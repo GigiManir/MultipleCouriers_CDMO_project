@@ -33,7 +33,7 @@ def save_result(filename, result):
 def run_multiple_instances(approach, solver, indices):
             instances_folder = 'instances'
             filenames = [f for f in os.listdir(instances_folder) if f.endswith('.dat')]
-            
+            filenames.sort()
             for index in indices:
                 if index <= 0 or index > len(filenames):
                     print(f"Index {index} out of range, skipping.")

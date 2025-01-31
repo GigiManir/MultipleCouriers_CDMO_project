@@ -32,7 +32,7 @@ def save_result(filename, result):
 
 def run_from_script(approach, solver):
     instances_folder = 'instances'
-    for filename in os.listdir(instances_folder):
+    for filename in os.listdir(instances_folder).sort():
         if filename.endswith('.dat'):
             instance_id = os.path.splitext(filename)[0]
             instance_path = os.path.join(instances_folder, filename)
@@ -76,6 +76,7 @@ def run_from_script(approach, solver):
 def run_single_instance(approach, solver, index):
     instances_folder = 'instances'
     filenames = [f for f in os.listdir(instances_folder) if f.endswith('.dat')]
+    filenames.sort()
     if index <= 0 or index > len(filenames):
         raise IndexError("Index out of range")
     
