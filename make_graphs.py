@@ -26,10 +26,12 @@ def make_plot(data):
     ax.legend()
     plt.xticks(list(range(1, len(times) + 1)))
     
+    # create the graphs directory if it doesn't exist
+    os.makedirs('graphs', exist_ok=True)
     # save the graph to file
-    plt.savefig(f"graph_all.png", dpi=500)
+    plt.savefig(f"graphs/graph_all.png", dpi=500)
 
-    plt.show()
+    # plt.show()
 
 
 def plot_all():
@@ -131,12 +133,14 @@ def plot_one(model):
         # plt.plot(times[i], label=model_name, marker=markers[i])
         plt.plot(times[i], label=model_name, marker=markers[i], markersize=12, linewidth=3)
 
-    plt.legend(fontsize=fontsize, loc='upper right')
-
+    # create the graphs directory if it doesn't exist
+    os.makedirs('graphs', exist_ok=True)
+    # # save the graph to file
+    # plt.savefig(f"graphs/{model}_graph.png", dpi=500)
     # save the graph to file
-    plt.savefig(f"{model}_graph.png", dpi=500)
+    plt.savefig(f"graphs/{model}_graph.png", dpi=500)
 
-    plt.show()
+    # plt.show()
 
 def main():
     plot_all()
