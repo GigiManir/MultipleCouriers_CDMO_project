@@ -162,5 +162,5 @@ cython_debug/
 #.idea/
 
 # Custom folders
-res/
+# res/
 instances_copy/
