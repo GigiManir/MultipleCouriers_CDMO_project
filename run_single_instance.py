@@ -32,7 +32,7 @@ def save_result(filename, result):
 
 def run_from_script(approach, solver):
     instances_folder = 'instances'
-    for filename in os.listdir(instances_folder).sort():
+    for filename in sorted(os.listdir(instances_folder)):
         if filename.endswith('.dat'):
             instance_id = os.path.splitext(filename)[0]
             instance_path = os.path.join(instances_folder, filename)
