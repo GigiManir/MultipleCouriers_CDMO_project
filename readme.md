@@ -20,7 +20,7 @@ Then on the bash terminal it is possible to run the script with the command:
 - ```python3 run_multiple_instances.py``` to optimize multiple instances with a single approach and solver.
 
 After solving some instances, it's possible to explore the results in the ```/res``` folder.<br>
-To re-run the optimization on a given instance, you must remove the result file from the result folder with ```rm res/{approach}/instXX_result.json``` (i.e. ``` rm res/MIP/inst03_result.json && python3 run_single_instance.py```)
+To re-run the optimization on a given instance, you must remove the result file from the result folder with ```rm res/{approach}/instXX_result.json``` or ```rm res/``` (i.e. ``` rm res/MIP/inst03_result.json && python3 run_single_instance.py```)
 
 ---
 By:
