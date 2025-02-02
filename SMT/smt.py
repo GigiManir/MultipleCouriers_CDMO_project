@@ -106,9 +106,10 @@ def optimize_courier_routes(output, num_couriers, num_packages, distances, weigh
         solver.add(courier_weights[courier] <= weight_limits[courier])
 
     # Additional constraints for base package handling
-    for courier in courier_indices:
-        solver.add(journeys[final_package][1][courier] != 1)
+    # for courier in courier_indices:
+    #     solver.add(journeys[final_package][1][courier] != 1)
 
+    # Each courier can return to the base only after delivering all the packages they are carrying
     for courier in courier_indices:
         for t in non_zero_time_slots:
             current_pickup = journeys[final_package][t][courier]
