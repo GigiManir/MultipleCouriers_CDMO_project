@@ -11,9 +11,13 @@ COPY . .
 RUN apt-get update \
   && apt-get install -y python3 \
   && apt-get install -y python3-pip \
-  && apt-get install -y libffi-dev 
+  && apt-get install -y libffi-dev \
+  && apt-get install -y git 
 # Install required libraries
 RUN pip install --break-system-packages --no-cache-dir -r requirements.txt
+RUN git clone 'https://github.com/GigiManir/gurobi_solver.git'
+RUN mv gurobi_solver/gurobi11.0.3_linux64/ .
+RUN rm -r gurobi_solver
 
 # Define the command to run the application
 ENV GUROBI_HOME="/src/gurobi11.0.3_linux64/gurobi1103/linux64"
