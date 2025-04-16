@@ -23,6 +23,7 @@ def read_dat_file(file_path):
         for line in file:
             D.append(list(map(int, line.strip().split())))
 
+
     return m, n, l, s, D
 
 def save_result(filename, result):
